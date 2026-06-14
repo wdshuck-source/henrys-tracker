@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Henry's Summer Tracker</title>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  body { 
+    font-family: 'Fredoka', sans-serif; 
+    background-color: #4DB8FF; 
+    color: #111; 
+    margin: 0; 
+    padding: 15px; 
+    display: flex; 
+    justify-content: center; 
+  }
+  .container { 
+    max-width: 600px; 
+    width: 100%; 
+    background: #ffffff; 
+    padding: 25px; 
+    border-radius: 16px; 
+    border: 4px solid #111;
+    box-shadow: 8px 8px 0px rgba(0,0,0,0.8); 
+  }
+  h1 { text-align: center; color: #E3000B; font-size: 32px; margin-bottom: 0; text-transform: uppercase; letter-spacing: 1px; -webkit-text-stroke: 1px #111;}
+  h3 { text-align: center; color: #111; margin-bottom: 10px; font-size: 22px; }
+  
+  .header-wrap { text-align: center; margin-bottom: 15px; }
+  #syncStatus { font-size: 14px; color: #111; font-weight: bold; background: #fff; display: inline-block; padding: 4px 12px; border-radius: 20px; border: 2px solid #111;}
+  
+  /* Week Selector UI */
+  .week-controls {
+    background: #f8f9fa; border: 3px solid #111; border-radius: 12px; padding: 12px;
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+  }
+  .week-controls label { font-size: 16px; font-weight: 700; color: #111; }
+  select.lego-select {
+    appearance: none; background: #F2CD37; border: 3px solid #111; padding: 8px 15px;
+    font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 16px; border-radius: 8px;
+    box-shadow: 3px 3px 0px #111; cursor: pointer; color: #111; outline: none;
+  }
+  select.lego-select:active { transform: translateY(2px); box-shadow: 1px 1px 0px #111; }
+
+  .goal-title {
+    text-align: center; font-size: 20px; font-weight: 700; color: #111; background: #F2CD37;
+    border: 3px solid #111; border-radius: 8px; padding: 10px; margin: 15px 0; box-shadow: 4px 4px 0px #111;
+  }
+
+  .progress-container { 
+    background: #e0e0e0; border-radius: 12px; border: 3px solid #111; margin: 10px 0 20px 0; 
+    width: 100%; overflow: hidden; box-shadow: inset 0px 4px 0px rgba(0,0,0,0.1);
+  }
+  .progress-bar { 
+    height: 100%; width: 0%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+    display: flex; align-items: center; justify-content: center; color: white; 
+    font-weight: 700; font-size: 16px; text-shadow: 1px 1px 0px #111;
+  }
+  .bar-main { background: #237841; height: 35px; border-right: 3px solid #111;}
+  .bar-week { background: #0055BF; height: 25px; font-size: 14px; border-right: 3px solid #111;}
+  
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px; }
+  .btn-full { grid-column: 1 / -1; }
+  button { 
+    padding: 15px; border: 3px solid #111; border-radius: 10px; font-size: 16px; 
+    font-family: 'Fredoka', sans-serif; cursor: pointer; transition: all 0.1s; 
+    color: white; font-weight: 700; box-shadow: 0px 6px 0px #111; text-shadow: 1px 1px 0px rgba(0,0,0,0.5);
+  }
+  button:active { transform: translateY(6px); box-shadow: 0px 0px 0px #111;}
+  
+  .btn-pic { background: #0055BF; } 
+  .btn-med { background: #8E44AD; } 
+  .btn-epic { background: #E67E22; } 
+  .btn-legend { background: #F2CD37; color: #111; text-shadow: none; } 
+  .btn-math { background: #E3000B; } 
+  .btn-scan { background: #111; color: #fff; text-shadow: none; }
+  .btn-reset { background: #bdc3c7; width: 100%; margin-top: 20px; color: #111; text-shadow: none;}
+  
+  #reader { width: 100%; margin-top: 15px; border-radius: 12px; border: 3px solid #111; overflow: hidden; }
+  #scanMessage { text-align: center; font-weight: bold; margin-top: 10px; color: #E3000B; min-height: 20px;}
+  
+  table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: 16px; border: 3px solid #111; border-radius: 12px; overflow: hidden;}
+  th, td { border-bottom: 2px solid #111; border-right: 2px solid #111; padding: 12px; text-align: center; font-weight: 600;}
+  th:last-child, td:last-child { border-right: none; }
+  tr:last-child td { border-bottom: none; }
+  th { background-color: #F2CD37; color: #111; }
+  input[type="checkbox"] { transform: scale(1.8); pointer-events: none; accent-color: #237841;}
+  .row-complete { background-color: #A3E4D7; color: #111; }
+  
+  .log-container { margin-top: 30px; border-top: 4px dashed #111; padding-top: 20px; }
+  .log-list { list-style: none; padding: 0; max-height: 250px; overflow-y: auto; border: 3px solid #111; border-radius: 12px; background: #f8f9fa;}
+  .log-list li { background: #fff; margin: 8px; padding: 12px; border-radius: 8px; font-size: 15px; border: 2px solid #111; border-left: 8px solid #E3000B; font-weight: 600;}
+  .log-list li:nth-child(even) { border-left-color: #0055BF; }
+  .log-date { color: #555; font-size: 12px; float: right; font-weight: 400;}
+
+  /* Library Stats Tracker */
+  .stats-container { margin-top: 25px; border: 3px solid #111; border-radius: 12px; padding: 15px; background: #fff; box-shadow: 4px 4px 0px rgba(0,0,0,0.1); }
+  .stats-container h3 { margin-top: 0; color: #237841; text-transform: uppercase;}
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+  .stat-brick { padding: 10px 15px; border: 3px solid #111; border-radius: 8px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0px rgba(0,0,0,0.5); display: flex; justify-content: space-between; align-items: center; font-size: 16px;}
+  .stat-val { background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; border: 2px solid rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header-wrap">
+    <h1>Henry's Summer Tracker</h1>
+    <div id="syncStatus">Connecting to database...</div>
+  </div>
+
+  <div class="week-controls">
+    <label for="weekDropdown">Active Week:</label>
+    <select id="weekDropdown" class="lego-select" onchange="changeWeek(this.value)">
+      <option value="1">Week 1</option>
+      <option value="2">Week 2</option>
+      <option value="3">Week 3</option>
+      <option value="4">Week 4</option>
+      <option value="5">Week 5</option>
+      <option value="6">Week 6</option>
+      <option value="7">Week 7</option>
+      <option value="8">Week 8</option>
+      <option value="9">Week 9</option>
+      <option value="10">Week 10</option>
+    </select>
+  </div>
+
+  <div class="goal-title">
+    🏆 Summer Goal: 3,000 Points = BIG LEGO SET! 🧱<br>
+    <span style="font-size: 24px; color: #237841;" id="scoreDisplay">0</span> / 3000
+  </div>
+  
+  <div class="progress-container">
+    <div class="progress-bar bar-main" id="progressBarMain">0%</div>
+  </div>
+
+  <div style="text-align: center; font-size: 18px; font-weight: bold;">
+    Current Week Points: <span id="weeklyScoreDisplay" style="color: #0055BF;">0</span> / 300
+  </div>
+  <div class="progress-container" style="margin-bottom: 10px;">
+    <div class="progress-bar bar-week" id="progressBarWeek">0%</div>
+  </div>
+  
+  <div style="text-align: center; font-size: 18px; font-weight: bold; color: #E3000B; margin-bottom: 20px;">
+    Weekly Math Sheets: <span id="weeklyMathDisplay">0</span> / 4 ✏️
+  </div>
+
+  <button class="btn-scan btn-full" onclick="toggleScanner()" style="width: 100%; margin-bottom: 15px;">📷 Scan Book Barcode</button>
+  <div id="reader" style="display: none;"></div>
+  <div id="scanMessage"></div>
+
+  <h3>Manual Entry</h3>
+  <div class="btn-grid">
+    <button class="btn-pic" onclick="logEntry(5, 'Picture Book', '<50', false)">Picture Book (+5)</button>
+    <button class="btn-med" onclick="logEntry(20, 'Medium Book', '50-99', false)">Medium Book (+20)</button>
+    <button class="btn-epic" onclick="logEntry(50, 'Epic Read', '100-199', false)">Epic Read (+50)</button>
+    <button class="btn-legend" onclick="logEntry(100, 'Legendary Read', '200+', false)">Legend Read (+100)</button>
+    <button class="btn-math btn-full" onclick="logEntry(20, 'Math Worksheet', 'N/A', true)">Math Sheet (+20)</button>
+  </div>
+
+  <h3>Weekly Milestones</h3>
+  <table id="milestoneTable">
+    <tr><th>Week</th><th>Requirements</th><th>Done?</th></tr>
+    <script>
+      for(let i = 1; i <= 10; i++) {
+        document.write(`<tr id="rowWeek${i}"><td>Week ${i}</td><td style="font-size: 14px;">300 pts + 4 Math</td><td><input type="checkbox" id="week${i}"></td></tr>`);
+      }
+    </script>
+  </table>
+
+  <div class="log-container">
+    <h3>Activity Log</h3>
+    <ul class="log-list" id="bookLog"></ul>
+  </div>
+
+  <div class="stats-container">
+    <h3>📚 Total Books Read: <span id="totalBooksDisplay">0</span></h3>
+    <div class="stats-grid">
+      <div class="stat-brick btn-pic">Picture <span class="stat-val" id="statPic">0</span></div>
+      <div class="stat-brick btn-med">Medium <span class="stat-val" id="statMed">0</span></div>
+      <div class="stat-brick btn-epic">Epic <span class="stat-val" id="statEpic">0</span></div>
+      <div class="stat-brick btn-legend">Legend <span class="stat-val" id="statLeg" style="border-color: rgba(0,0,0,0.5);">0</span></div>
+    </div>
+  </div>
+
+  <button class="btn-reset" onclick="resetApp()">Reset Tracker Database</button>
+</div>
+
+<script>
+  // =========================================================================
+  // 1. FIREBASE CONFIGURATION (INJECTED)
+  // =========================================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3O0Fo49RiigaMadlUXrlBIiUOprwnF44",
+    authDomain: "henry-summer-tracker.firebaseapp.com",
+    databaseURL: "https://henry-summer-tracker-default-rtdb.firebaseio.com",
+    projectId: "henry-summer-tracker",
+    storageBucket: "henry-summer-tracker.firebasestorage.app",
+    messagingSenderId: "1069452782059",
+    appId: "1:1069452782059:web:376b2646de72ff91b8d1ae"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+  const dbRef = database.ref('summerTrackerV9'); 
+
+  // =========================================================================
+  // 2. REAL-TIME DATABASE LISTENER & STATE
+  // =========================================================================
+  
+  let appData = {
+    totalScore: 0,
+    currentWeek: 1,
+    weeks: {},
+    history: {}
+  };
+  
+  dbRef.on('value', (snapshot) => {
+    document.getElementById('syncStatus').innerText = "🟢 Synced & Live";
+    appData = snapshot.val() || { totalScore: 0, currentWeek: 1, weeks: {}, history: {} };
+    updateUI();
+  }, (error) => {
+    document.getElementById('syncStatus').innerText = "🔴 Connection Error";
+  });
+
+  // =========================================================================
+  // 3. CORE LOGIC & UI UPDATES
+  // =========================================================================
+
+  function changeWeek(newWeek) {
+    dbRef.child('currentWeek').set(parseInt(newWeek));
+  }
+
+  function updateUI() {
+    let tScore = appData.totalScore || 0;
+    let activeWeekNum = appData.currentWeek || 1;
+    let activeWeekData = (appData.weeks && appData.weeks[activeWeekNum]) ? appData.weeks[activeWeekNum] : {score: 0, math: 0};
+
+    document.getElementById('weekDropdown').value = activeWeekNum;
+
+    // Main Summer Progress Bar
+    document.getElementById('scoreDisplay').innerText = tScore;
+    let mainPercentage = Math.min((tScore / 3000) * 100, 100);
+    document.getElementById('progressBarMain').style.width = mainPercentage + '%';
+    document.getElementById('progressBarMain').innerText = mainPercentage >= 100 ? 'LEGO UNLOCKED! 🧱' : Math.floor(mainPercentage) + '%';
+    
+    // Independent Weekly Displays
+    document.getElementById('weeklyScoreDisplay').innerText = activeWeekData.score || 0;
+    let weeklyPercentage = Math.min(((activeWeekData.score || 0) / 300) * 100, 100);
+    document.getElementById('progressBarWeek').style.width = weeklyPercentage + '%';
+    document.getElementById('progressBarWeek').innerText = Math.floor(weeklyPercentage) + '%';
+    
+    document.getElementById('weeklyMathDisplay').innerText = activeWeekData.math || 0;
+
+    // Table Checkboxes
+    for(let i = 1; i <= 10; i++) {
+      let checkbox = document.getElementById('week' + i);
+      let row = document.getElementById('rowWeek' + i);
+      let wData = (appData.weeks && appData.weeks[i]) ? appData.weeks[i] : {score: 0, math: 0};
+      
+      let isComplete = ((wData.score || 0) >= 300 && (wData.math || 0) >= 4);
+      
+      checkbox.checked = isComplete;
+      row.className = isComplete ? "row-complete" : "";
+    }
+
+    // History Log & Library Stats Tracker
+    let historyArr = appData.history ? Object.values(appData.history) : [];
+    
+    let picCount = 0, medCount = 0, epicCount = 0, legCount = 0, totalBooks = 0;
+    let logHTML = "";
+    
+    if(historyArr.length === 0) logHTML = "<li style='text-align:center; border-left:none;'>No activities logged yet!</li>";
+    
+    historyArr.sort((a, b) => b.timestamp - a.timestamp).forEach(entry => {
+      // Build History HTML
+      let pageText = entry.pages !== "N/A" ? `(${entry.pages} pages)` : "";
+      logHTML += `<li><strong>${entry.title}</strong> ${pageText} - <em style="color:#237841;">+${entry.points} pts</em> <span class="log-date">Wk ${entry.weekLogged} • ${new Date(entry.timestamp).toLocaleDateString()}</span></li>`;
+      
+      // Calculate Stats (Exclude Math Sheets)
+      if(!entry.isMath) {
+        totalBooks++;
+        if(entry.points === 5) picCount++;
+        else if(entry.points === 20) medCount++;
+        else if(entry.points === 50) epicCount++;
+        else if(entry.points === 100) legCount++;
+      }
+    });
+    
+    document.getElementById('bookLog').innerHTML = logHTML;
+    
+    // Update Stats Display
+    document.getElementById('totalBooksDisplay').innerText = totalBooks;
+    document.getElementById('statPic').innerText = picCount;
+    document.getElementById('statMed').innerText = medCount;
+    document.getElementById('statEpic').innerText = epicCount;
+    document.getElementById('statLeg').innerText = legCount;
+  }
+
+  function logEntry(points, title, pages, isMath = false) {
+    let activeWeekNum = appData.currentWeek || 1;
+    let currentWeekScore = (appData.weeks && appData.weeks[activeWeekNum] && appData.weeks[activeWeekNum].score) ? appData.weeks[activeWeekNum].score : 0;
+    let currentWeekMath = (appData.weeks && appData.weeks[activeWeekNum] && appData.weeks[activeWeekNum].math) ? appData.weeks[activeWeekNum].math : 0;
+    
+    let newEntry = {
+      title: title,
+      pages: pages,
+      points: points,
+      isMath: isMath,
+      weekLogged: activeWeekNum,
+      timestamp: Date.now()
+    };
+    
+    let updates = {};
+    updates['/totalScore'] = (appData.totalScore || 0) + points;
+    updates['/weeks/' + activeWeekNum + '/score'] = currentWeekScore + points;
+    updates['/weeks/' + activeWeekNum + '/math'] = isMath ? currentWeekMath + 1 : currentWeekMath;
+    
+    dbRef.update(updates);
+    dbRef.child('history').push(newEntry);
+  }
+
+  // =========================================================================
+  // 4. SCANNER LOGIC
+  // =========================================================================
+
+  let html5QrcodeScanner = null;
+
+  function toggleScanner() {
+    const readerDiv = document.getElementById('reader');
+    if (readerDiv.style.display === 'none') {
+      readerDiv.style.display = 'block';
+      document.getElementById('scanMessage').innerText = "Camera starting...";
+      html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} }, false);
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    } else {
+      if(html5QrcodeScanner) html5QrcodeScanner.clear();
+      readerDiv.style.display = 'none';
+      document.getElementById('scanMessage').innerText = "";
+    }
+  }
+
+  async function onScanSuccess(decodedText) {
+    if(html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+      document.getElementById('reader').style.display = 'none';
+    }
+    document.getElementById('scanMessage').innerText = "Looking up book data...";
+    
+    try {
+      let response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${decodedText}`);
+      let data = await response.json();
+      
+      if(data.items && data.items.length > 0) {
+        let book = data.items[0].volumeInfo;
+        let title = book.title || "Unknown Title";
+        let pages = book.pageCount || 0;
+        
+        if(pages === 0) {
+          document.getElementById('scanMessage').innerText = `Found "${title}" but missing page count. Please enter manually.`;
+          return;
+        }
+        
+        let pts = 5;
+        if(pages >= 200) pts = 100;
+        else if(pages >= 100) pts = 50;
+        else if(pages >= 50) pts = 20;
+
+        logEntry(pts, `Scanned: ${title}`, pages, false);
+        document.getElementById('scanMessage').innerText = `Success! Added "${title}" for ${pts} points.`;
+      } else {
+        document.getElementById('scanMessage').innerText = "Book not found in database. Please enter manually.";
+      }
+    } catch(err) {
+      document.getElementById('scanMessage').innerText = "Error connecting to Google Books. Try manual entry.";
+    }
+  }
+
+  function onScanFailure(error) {}
+
+  function resetApp() {
+    if(confirm("Are you sure you want to completely erase the database? This affects all connected devices.")) {
+      dbRef.set({ totalScore: 0, currentWeek: 1, weeks: null, history: null });
+      document.getElementById('scanMessage').innerText = "";
+    }
+  }
+</script>
+</body>
+</html>
