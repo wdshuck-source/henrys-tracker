@@ -80,7 +80,6 @@
   .btn-legend { background: #F2CD37; color: #111; text-shadow: none; } 
   .btn-math { background: #E3000B; } 
   .btn-scan { background: #111; color: #fff; text-shadow: none; }
-  .btn-reset { background: #bdc3c7; width: 100%; margin-top: 20px; color: #111; text-shadow: none;}
   
   #reader { width: 100%; margin-top: 15px; border-radius: 12px; border: 3px solid #111; overflow: hidden; }
   #scanMessage { text-align: center; font-weight: bold; margin-top: 10px; color: #E3000B; min-height: 20px;}
@@ -100,14 +99,48 @@
   .log-date { color: #555; font-size: 12px; float: right; font-weight: 400;}
 
   /* Library Stats Tracker */
-  .stats-container { margin-top: 25px; border: 3px solid #111; border-radius: 12px; padding: 15px; background: #fff; box-shadow: 4px 4px 0px rgba(0,0,0,0.1); }
+  .stats-container { margin-top: 25px; margin-bottom: 30px; border: 3px solid #111; border-radius: 12px; padding: 15px; background: #fff; box-shadow: 4px 4px 0px rgba(0,0,0,0.1); }
   .stats-container h3 { margin-top: 0; color: #237841; text-transform: uppercase;}
   .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
   .stat-brick { padding: 10px 15px; border: 3px solid #111; border-radius: 8px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0px rgba(0,0,0,0.5); display: flex; justify-content: space-between; align-items: center; font-size: 16px;}
   .stat-val { background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; border: 2px solid rgba(0,0,0,0.3); }
+
+  /* Admin / Backup Controls */
+  .admin-controls { padding-top: 20px; border-top: 4px dashed #111; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-backup { background: #34495e; font-size: 14px; padding: 12px;}
+  .btn-restore { background: #2c3e50; font-size: 14px; padding: 12px;}
+  .btn-reset { background: #bdc3c7; width: 100%; margin-top: 10px; color: #111; text-shadow: none;}
+
+  /* PIN Lock Screen Overlay */
+  #pinScreen {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0055BF;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
+  }
+  .pin-box {
+    background: #fff; padding: 30px; border-radius: 16px; border: 4px solid #111;
+    box-shadow: 8px 8px 0px #111; text-align: center; max-width: 300px; width: 80%;
+  }
+  .pin-box h2 { margin-top: 0; color: #E3000B; text-transform: uppercase; font-size: 24px; -webkit-text-stroke: 1px #111; }
+  #pinInput {
+    font-family: 'Fredoka', sans-serif; font-size: 32px; text-align: center; width: 100%; box-sizing: border-box;
+    padding: 10px; margin-bottom: 20px; border: 3px solid #111; border-radius: 8px; letter-spacing: 15px;
+  }
+  .pin-btn { background: #237841; width: 100%; }
+  #pinError { color: #E3000B; font-weight: bold; margin-top: 15px; display: none; }
+
 </style>
 </head>
 <body>
+
+<div id="pinScreen">
+  <div class="pin-box">
+    <h2>Parent Lock 🧱</h2>
+    <p style="font-weight: 600; margin-bottom: 20px;">Enter PIN to access tracker</p>
+    <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
+    <button class="pin-btn" onclick="checkPin()">Unlock Tracker</button>
+    <p id="pinError">Incorrect PIN. Try again.</p>
+  </div>
+</div>
 
 <div class="container">
   <div class="header-wrap">
@@ -189,12 +222,45 @@
     </div>
   </div>
 
-  <button class="btn-reset" onclick="resetApp()">Reset Tracker Database</button>
+  <div class="admin-controls">
+    <button class="btn-backup" onclick="exportBackup()">💾 Save Backup</button>
+    <button class="btn-restore" onclick="document.getElementById('backupFileInput').click()">📂 Restore Backup</button>
+    <input type="file" id="backupFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+    <button class="btn-reset btn-full" onclick="resetApp()">Reset Tracker Database</button>
+  </div>
+
 </div>
 
 <script>
   // =========================================================================
-  // 1. FIREBASE CONFIGURATION (INJECTED)
+  // 1. PIN CONFIGURATION
+  // =========================================================================
+  const SECRET_PIN = "111415";
+
+  function checkPin() {
+    const enteredPin = document.getElementById('pinInput').value;
+    if (enteredPin === SECRET_PIN) {
+      document.getElementById('pinScreen').style.display = 'none';
+      sessionStorage.setItem('trackerUnlocked', 'true');
+    } else {
+      document.getElementById('pinError').style.display = 'block';
+      document.getElementById('pinInput').value = '';
+    }
+  }
+
+  if (sessionStorage.getItem('trackerUnlocked') === 'true') {
+    document.getElementById('pinScreen').style.display = 'none';
+  }
+
+  document.getElementById('pinInput').addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      checkPin();
+    }
+  });
+
+  // =========================================================================
+  // 2. FIREBASE CONFIGURATION 
   // =========================================================================
   const firebaseConfig = {
     apiKey: "AIzaSyC3O0Fo49RiigaMadlUXrlBIiUOprwnF44",
@@ -211,7 +277,7 @@
   const dbRef = database.ref('summerTrackerV9'); 
 
   // =========================================================================
-  // 2. REAL-TIME DATABASE LISTENER & STATE
+  // 3. REAL-TIME DATABASE LISTENER & STATE
   // =========================================================================
   
   let appData = {
@@ -230,7 +296,7 @@
   });
 
   // =========================================================================
-  // 3. CORE LOGIC & UI UPDATES
+  // 4. CORE LOGIC & UI UPDATES
   // =========================================================================
 
   function changeWeek(newWeek) {
@@ -327,7 +393,7 @@
   }
 
   // =========================================================================
-  // 4. SCANNER LOGIC
+  // 5. SCANNER LOGIC
   // =========================================================================
 
   let html5QrcodeScanner = null;
@@ -383,6 +449,63 @@
   }
 
   function onScanFailure(error) {}
+
+  // =========================================================================
+  // 6. BACKUP & RESTORE LOGIC
+  // =========================================================================
+
+  function exportBackup() {
+    // Stringify the live appData from Firebase
+    const dataStr = JSON.stringify(appData, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    // Create an invisible link to trigger the download
+    const a = document.createElement("a");
+    a.href = url;
+    
+    // Auto-generate file name with current date
+    let dateStr = new Date().toISOString().split('T')[0];
+    a.download = `henrys_tracker_backup_${dateStr}.json`;
+    
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importBackup(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const parsedData = JSON.parse(e.target.result);
+        
+        if(confirm("Are you sure you want to overwrite the live tracker with this backup file?")) {
+          // Push the entire parsed JSON object directly into the database reference
+          dbRef.set(parsedData)
+            .then(() => {
+              alert("Backup restored successfully!");
+              document.getElementById('backupFileInput').value = ""; // Reset the input field
+            })
+            .catch((error) => {
+              alert("Error restoring backup: " + error.message);
+              document.getElementById('backupFileInput').value = ""; 
+            });
+        } else {
+           document.getElementById('backupFileInput').value = ""; 
+        }
+      } catch (err) {
+        alert("Invalid backup file format. Please upload a valid JSON backup.");
+        document.getElementById('backupFileInput').value = ""; 
+      }
+    };
+    reader.readAsText(file);
+  }
 
   function resetApp() {
     if(confirm("Are you sure you want to completely erase the database? This affects all connected devices.")) {
