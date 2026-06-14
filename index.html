@@ -11,22 +11,12 @@
 
 <style>
   body { 
-    font-family: 'Fredoka', sans-serif; 
-    background-color: #4DB8FF; 
-    color: #111; 
-    margin: 0; 
-    padding: 15px; 
-    display: flex; 
-    justify-content: center; 
+    font-family: 'Fredoka', sans-serif; background-color: #4DB8FF; color: #111; 
+    margin: 0; padding: 15px; display: flex; justify-content: center; 
   }
   .container { 
-    max-width: 600px; 
-    width: 100%; 
-    background: #ffffff; 
-    padding: 25px; 
-    border-radius: 16px; 
-    border: 4px solid #111;
-    box-shadow: 8px 8px 0px rgba(0,0,0,0.8); 
+    max-width: 600px; width: 100%; background: #ffffff; padding: 25px; 
+    border-radius: 16px; border: 4px solid #111; box-shadow: 8px 8px 0px rgba(0,0,0,0.8); 
   }
   h1 { text-align: center; color: #E3000B; font-size: 32px; margin-bottom: 0; text-transform: uppercase; letter-spacing: 1px; -webkit-text-stroke: 1px #111;}
   h3 { text-align: center; color: #111; margin-bottom: 10px; font-size: 22px; }
@@ -80,6 +70,7 @@
   .btn-legend { background: #F2CD37; color: #111; text-shadow: none; } 
   .btn-math { background: #E3000B; } 
   .btn-scan { background: #111; color: #fff; text-shadow: none; }
+  .btn-custom { background: #2c3e50; margin-bottom: 12px; width: 100%; }
   
   #reader { width: 100%; margin-top: 15px; border-radius: 12px; border: 3px solid #111; overflow: hidden; }
   #scanMessage { text-align: center; font-weight: bold; margin-top: 10px; color: #E3000B; min-height: 20px;}
@@ -111,36 +102,67 @@
   .btn-restore { background: #2c3e50; font-size: 14px; padding: 12px;}
   .btn-reset { background: #bdc3c7; width: 100%; margin-top: 10px; color: #111; text-shadow: none;}
 
-  /* PIN Lock Screen Overlay */
-  #pinScreen {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0055BF;
+  /* Full Screen Overlays */
+  .overlay-screen {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
     display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
+    padding: 20px; box-sizing: border-box;
   }
-  .pin-box {
+  #pinScreen { background: #0055BF; }
+  #comprehensionScreen { background: rgba(0,0,0,0.9); display: none; }
+  
+  .popup-box {
     background: #fff; padding: 30px; border-radius: 16px; border: 4px solid #111;
-    box-shadow: 8px 8px 0px #111; text-align: center; max-width: 300px; width: 80%;
+    box-shadow: 8px 8px 0px #111; max-width: 400px; width: 100%; box-sizing: border-box;
   }
-  .pin-box h2 { margin-top: 0; color: #E3000B; text-transform: uppercase; font-size: 24px; -webkit-text-stroke: 1px #111; }
-  #pinInput {
+  .popup-box h2 { margin-top: 0; color: #E3000B; text-transform: uppercase; font-size: 24px; -webkit-text-stroke: 1px #111; text-align: center;}
+  
+  .comp-questions { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid #ccc; margin: 15px 0; font-size: 16px; font-weight: 600;}
+  .comp-questions p { margin: 8px 0; }
+  
+  .pin-input-large {
     font-family: 'Fredoka', sans-serif; font-size: 32px; text-align: center; width: 100%; box-sizing: border-box;
     padding: 10px; margin-bottom: 20px; border: 3px solid #111; border-radius: 8px; letter-spacing: 15px;
   }
-  .pin-btn { background: #237841; width: 100%; }
-  #pinError { color: #E3000B; font-weight: bold; margin-top: 15px; display: none; }
+  .pin-btn { background: #237841; width: 100%; margin-bottom: 10px;}
+  .cancel-btn { background: #E3000B; width: 100%; }
+  .error-msg { color: #E3000B; font-weight: bold; margin-top: 15px; display: none; text-align: center;}
 
 </style>
 </head>
 <body>
 
-<div id="pinScreen">
-  <div class="pin-box">
+<div id="pinScreen" class="overlay-screen">
+  <div class="popup-box">
     <h2>Parent Lock 🧱</h2>
-    <p style="font-weight: 600; margin-bottom: 20px;">Enter PIN to access tracker</p>
-    <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••">
-    <button class="pin-btn" onclick="checkPin()">Unlock Tracker</button>
-    <p id="pinError">Incorrect PIN. Try again.</p>
+    <p style="font-weight: 600; margin-bottom: 20px; text-align: center;">Enter PIN to access tracker</p>
+    <input type="password" id="startupPinInput" class="pin-input-large" inputmode="numeric" maxlength="6" placeholder="••••••">
+    <button class="pin-btn" onclick="checkStartupPin()">Unlock Tracker</button>
+    <p id="startupPinError" class="error-msg">Incorrect PIN. Try again.</p>
   </div>
 </div>
+
+<div id="comprehensionScreen" class="overlay-screen">
+  <div class="popup-box">
+    <h2>📚 Book Check!</h2>
+    <p style="text-align: center; font-weight: 600;">You are about to log:<br><span id="compBookTitle" style="color: #0055BF; font-size: 18px;"></span></p>
+    
+    <div class="comp-questions">
+      <p style="color: #E3000B; text-align: center; margin-bottom: 10px;">Go answer these 3 questions for your parents:</p>
+      <p>1️⃣ Who were the main characters and what did they want?</p>
+      <p>2️⃣ What was the main conflict or challenge?</p>
+      <p>3️⃣ How was the problem solved at the end?</p>
+    </div>
+
+    <p style="text-align: center; font-size: 14px; color: #555;">Parents: If Henry gets at least 2 right, enter PIN to approve.</p>
+    <input type="password" id="compPinInput" class="pin-input-large" inputmode="numeric" maxlength="6" placeholder="••••••">
+    
+    <button class="pin-btn" onclick="approveBook()">✅ Approve & Add Points</button>
+    <button class="cancel-btn" onclick="cancelBook()">❌ Try Again Later</button>
+    <p id="compPinError" class="error-msg">Incorrect PIN.</p>
+  </div>
+</div>
+
 
 <div class="container">
   <div class="header-wrap">
@@ -189,11 +211,13 @@
   <div id="scanMessage"></div>
 
   <h3>Manual Entry</h3>
+  <button class="btn-custom" onclick="customBookEntry()">✍️ Type in Missing Book</button>
+  
   <div class="btn-grid">
-    <button class="btn-pic" onclick="logEntry(5, 'Picture Book', '<50', false)">Picture Book (+5)</button>
-    <button class="btn-med" onclick="logEntry(20, 'Medium Book', '50-99', false)">Medium Book (+20)</button>
-    <button class="btn-epic" onclick="logEntry(50, 'Epic Read', '100-199', false)">Epic Read (+50)</button>
-    <button class="btn-legend" onclick="logEntry(100, 'Legendary Read', '200+', false)">Legend Read (+100)</button>
+    <button class="btn-pic" onclick="initiateBookEntry(5, 'Picture Book', '<50')">Picture Book (+5)</button>
+    <button class="btn-med" onclick="initiateBookEntry(20, 'Medium Book', '50-99')">Medium Book (+20)</button>
+    <button class="btn-epic" onclick="initiateBookEntry(50, 'Epic Read', '100-199')">Epic Read (+50)</button>
+    <button class="btn-legend" onclick="initiateBookEntry(100, 'Legendary Read', '200+')">Legend Read (+100)</button>
     <button class="btn-math btn-full" onclick="logEntry(20, 'Math Worksheet', 'N/A', true)">Math Sheet (+20)</button>
   </div>
 
@@ -233,18 +257,21 @@
 
 <script>
   // =========================================================================
-  // 1. PIN CONFIGURATION
+  // 1. PIN & COMPREHENSION LOGIC
   // =========================================================================
-  const SECRET_PIN = "111415";
+  const SECRET_PIN = "123456"; 
+  
+  // Temporary storage for the book waiting to be approved
+  let pendingBook = null;
 
-  function checkPin() {
-    const enteredPin = document.getElementById('pinInput').value;
+  function checkStartupPin() {
+    const enteredPin = document.getElementById('startupPinInput').value;
     if (enteredPin === SECRET_PIN) {
       document.getElementById('pinScreen').style.display = 'none';
       sessionStorage.setItem('trackerUnlocked', 'true');
     } else {
-      document.getElementById('pinError').style.display = 'block';
-      document.getElementById('pinInput').value = '';
+      document.getElementById('startupPinError').style.display = 'block';
+      document.getElementById('startupPinInput').value = '';
     }
   }
 
@@ -252,12 +279,43 @@
     document.getElementById('pinScreen').style.display = 'none';
   }
 
-  document.getElementById('pinInput').addEventListener("keypress", function(event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      checkPin();
-    }
+  // Handle Enter key for startup PIN
+  document.getElementById('startupPinInput').addEventListener("keypress", function(event) {
+    if (event.key === "Enter") { event.preventDefault(); checkStartupPin(); }
   });
+
+  // Intercepts any book entry and opens the quiz screen
+  function initiateBookEntry(points, title, pages) {
+    pendingBook = { points: points, title: title, pages: pages };
+    document.getElementById('compBookTitle').innerText = title;
+    document.getElementById('compPinInput').value = '';
+    document.getElementById('compPinError').style.display = 'none';
+    document.getElementById('comprehensionScreen').style.display = 'flex';
+  }
+
+  // Verifies PIN to approve the quiz
+  function approveBook() {
+    const enteredPin = document.getElementById('compPinInput').value;
+    if (enteredPin === SECRET_PIN) {
+      document.getElementById('comprehensionScreen').style.display = 'none';
+      if (pendingBook) {
+        logEntry(pendingBook.points, pendingBook.title, pendingBook.pages, false);
+        alert(`Comprehension passed! Added "${pendingBook.title}" for ${pendingBook.points} points.`);
+        pendingBook = null;
+      }
+    } else {
+      document.getElementById('compPinError').style.display = 'block';
+      document.getElementById('compPinInput').value = '';
+    }
+  }
+
+  // Discards the book if he fails the quiz
+  function cancelBook() {
+    document.getElementById('comprehensionScreen').style.display = 'none';
+    pendingBook = null;
+    alert("Read a bit closer and try again later!");
+  }
+
 
   // =========================================================================
   // 2. FIREBASE CONFIGURATION 
@@ -281,10 +339,7 @@
   // =========================================================================
   
   let appData = {
-    totalScore: 0,
-    currentWeek: 1,
-    weeks: {},
-    history: {}
+    totalScore: 0, currentWeek: 1, weeks: {}, history: {}
   };
   
   dbRef.on('value', (snapshot) => {
@@ -310,13 +365,12 @@
 
     document.getElementById('weekDropdown').value = activeWeekNum;
 
-    // Main Summer Progress Bar
+    // Progress Bars
     document.getElementById('scoreDisplay').innerText = tScore;
     let mainPercentage = Math.min((tScore / 3000) * 100, 100);
     document.getElementById('progressBarMain').style.width = mainPercentage + '%';
     document.getElementById('progressBarMain').innerText = mainPercentage >= 100 ? 'LEGO UNLOCKED! 🧱' : Math.floor(mainPercentage) + '%';
     
-    // Independent Weekly Displays
     document.getElementById('weeklyScoreDisplay').innerText = activeWeekData.score || 0;
     let weeklyPercentage = Math.min(((activeWeekData.score || 0) / 300) * 100, 100);
     document.getElementById('progressBarWeek').style.width = weeklyPercentage + '%';
@@ -324,32 +378,27 @@
     
     document.getElementById('weeklyMathDisplay').innerText = activeWeekData.math || 0;
 
-    // Table Checkboxes
+    // Checkboxes
     for(let i = 1; i <= 10; i++) {
       let checkbox = document.getElementById('week' + i);
       let row = document.getElementById('rowWeek' + i);
       let wData = (appData.weeks && appData.weeks[i]) ? appData.weeks[i] : {score: 0, math: 0};
-      
       let isComplete = ((wData.score || 0) >= 300 && (wData.math || 0) >= 4);
-      
       checkbox.checked = isComplete;
       row.className = isComplete ? "row-complete" : "";
     }
 
-    // History Log & Library Stats Tracker
+    // History Log & Stats
     let historyArr = appData.history ? Object.values(appData.history) : [];
-    
     let picCount = 0, medCount = 0, epicCount = 0, legCount = 0, totalBooks = 0;
     let logHTML = "";
     
     if(historyArr.length === 0) logHTML = "<li style='text-align:center; border-left:none;'>No activities logged yet!</li>";
     
     historyArr.sort((a, b) => b.timestamp - a.timestamp).forEach(entry => {
-      // Build History HTML
       let pageText = entry.pages !== "N/A" ? `(${entry.pages} pages)` : "";
       logHTML += `<li><strong>${entry.title}</strong> ${pageText} - <em style="color:#237841;">+${entry.points} pts</em> <span class="log-date">Wk ${entry.weekLogged} • ${new Date(entry.timestamp).toLocaleDateString()}</span></li>`;
       
-      // Calculate Stats (Exclude Math Sheets)
       if(!entry.isMath) {
         totalBooks++;
         if(entry.points === 5) picCount++;
@@ -360,8 +409,6 @@
     });
     
     document.getElementById('bookLog').innerHTML = logHTML;
-    
-    // Update Stats Display
     document.getElementById('totalBooksDisplay').innerText = totalBooks;
     document.getElementById('statPic').innerText = picCount;
     document.getElementById('statMed').innerText = medCount;
@@ -369,19 +416,13 @@
     document.getElementById('statLeg').innerText = legCount;
   }
 
+  // The actual logging function (only fires if Math, or if PIN was entered)
   function logEntry(points, title, pages, isMath = false) {
     let activeWeekNum = appData.currentWeek || 1;
     let currentWeekScore = (appData.weeks && appData.weeks[activeWeekNum] && appData.weeks[activeWeekNum].score) ? appData.weeks[activeWeekNum].score : 0;
     let currentWeekMath = (appData.weeks && appData.weeks[activeWeekNum] && appData.weeks[activeWeekNum].math) ? appData.weeks[activeWeekNum].math : 0;
     
-    let newEntry = {
-      title: title,
-      pages: pages,
-      points: points,
-      isMath: isMath,
-      weekLogged: activeWeekNum,
-      timestamp: Date.now()
-    };
+    let newEntry = { title: title, pages: pages, points: points, isMath: isMath, weekLogged: activeWeekNum, timestamp: Date.now() };
     
     let updates = {};
     updates['/totalScore'] = (appData.totalScore || 0) + points;
@@ -393,7 +434,33 @@
   }
 
   // =========================================================================
-  // 5. SCANNER LOGIC
+  // 5. CUSTOM BOOK ENTRY 
+  // =========================================================================
+
+  function customBookEntry(prefilledTitle = "") {
+    let title = prompt("Enter the book's title:", prefilledTitle);
+    if (!title) return;
+    
+    let pagesStr = prompt("How many pages is it?");
+    if (!pagesStr) return;
+    
+    let pages = parseInt(pagesStr);
+    if (isNaN(pages) || pages <= 0) {
+      alert("Please enter a valid number for pages.");
+      return;
+    }
+
+    let pts = 5;
+    if (pages >= 200) pts = 100;
+    else if (pages >= 100) pts = 50;
+    else if (pages >= 50) pts = 20;
+
+    // Send to comprehension check instead of logging directly
+    initiateBookEntry(pts, `Manual: ${title}`, pages);
+  }
+
+  // =========================================================================
+  // 6. DUAL-SEARCH SCANNER LOGIC
   // =========================================================================
 
   let html5QrcodeScanner = null;
@@ -403,7 +470,11 @@
     if (readerDiv.style.display === 'none') {
       readerDiv.style.display = 'block';
       document.getElementById('scanMessage').innerText = "Camera starting...";
-      html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 150} }, false);
+      
+      html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+        fps: 15, qrbox: { width: 350, height: 150 }, aspectRatio: 1.0
+      }, false);
+      
       html5QrcodeScanner.render(onScanSuccess, onScanFailure);
     } else {
       if(html5QrcodeScanner) html5QrcodeScanner.clear();
@@ -417,61 +488,71 @@
       html5QrcodeScanner.clear();
       document.getElementById('reader').style.display = 'none';
     }
-    document.getElementById('scanMessage').innerText = "Looking up book data...";
+    document.getElementById('scanMessage').innerText = "Searching databases...";
+    
+    let title = "";
+    let pages = 0;
     
     try {
-      let response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${decodedText}`);
-      let data = await response.json();
+      let gbResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${decodedText}`);
+      let gbData = await gbResponse.json();
       
-      if(data.items && data.items.length > 0) {
-        let book = data.items[0].volumeInfo;
-        let title = book.title || "Unknown Title";
-        let pages = book.pageCount || 0;
-        
-        if(pages === 0) {
-          document.getElementById('scanMessage').innerText = `Found "${title}" but missing page count. Please enter manually.`;
-          return;
-        }
-        
-        let pts = 5;
-        if(pages >= 200) pts = 100;
-        else if(pages >= 100) pts = 50;
-        else if(pages >= 50) pts = 20;
-
-        logEntry(pts, `Scanned: ${title}`, pages, false);
-        document.getElementById('scanMessage').innerText = `Success! Added "${title}" for ${pts} points.`;
-      } else {
-        document.getElementById('scanMessage').innerText = "Book not found in database. Please enter manually.";
+      if(gbData.items && gbData.items.length > 0) {
+        title = gbData.items[0].volumeInfo.title || "";
+        pages = gbData.items[0].volumeInfo.pageCount || 0;
       }
+      
+      if (title === "" || pages === 0) {
+        let olResponse = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${decodedText}&format=json&jscmd=data`);
+        let olData = await olResponse.json();
+        let isbnKey = `ISBN:${decodedText}`;
+        if (olData && olData[isbnKey]) {
+          title = olData[isbnKey].title || title; 
+          pages = olData[isbnKey].number_of_pages || pages;
+        }
+      }
+
+      if (title === "") {
+        document.getElementById('scanMessage').innerText = "Book not found. Please use manual entry.";
+        return;
+      }
+
+      if (pages === 0) {
+        document.getElementById('scanMessage').innerText = `Found "${title}" but missing page count.`;
+        customBookEntry(title);
+        return;
+      }
+        
+      let pts = 5;
+      if(pages >= 200) pts = 100;
+      else if(pages >= 100) pts = 50;
+      else if(pages >= 50) pts = 20;
+
+      document.getElementById('scanMessage').innerText = `Found "${title}". Initiating comprehension check...`;
+      
+      // Send to comprehension check instead of logging directly
+      initiateBookEntry(pts, `Scanned: ${title}`, pages);
+      
     } catch(err) {
-      document.getElementById('scanMessage').innerText = "Error connecting to Google Books. Try manual entry.";
+      document.getElementById('scanMessage').innerText = "Connection error. Try manual entry.";
     }
   }
 
   function onScanFailure(error) {}
 
   // =========================================================================
-  // 6. BACKUP & RESTORE LOGIC
+  // 7. BACKUP & RESTORE LOGIC
   // =========================================================================
 
   function exportBackup() {
-    // Stringify the live appData from Firebase
     const dataStr = JSON.stringify(appData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
-    // Create an invisible link to trigger the download
     const a = document.createElement("a");
     a.href = url;
-    
-    // Auto-generate file name with current date
-    let dateStr = new Date().toISOString().split('T')[0];
-    a.download = `henrys_tracker_backup_${dateStr}.json`;
-    
+    a.download = `henrys_tracker_backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
-    
-    // Clean up
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
@@ -479,38 +560,24 @@
   function importBackup(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
         const parsedData = JSON.parse(e.target.result);
-        
         if(confirm("Are you sure you want to overwrite the live tracker with this backup file?")) {
-          // Push the entire parsed JSON object directly into the database reference
-          dbRef.set(parsedData)
-            .then(() => {
-              alert("Backup restored successfully!");
-              document.getElementById('backupFileInput').value = ""; // Reset the input field
-            })
-            .catch((error) => {
-              alert("Error restoring backup: " + error.message);
-              document.getElementById('backupFileInput').value = ""; 
-            });
-        } else {
-           document.getElementById('backupFileInput').value = ""; 
+          dbRef.set(parsedData).then(() => {
+            alert("Backup restored successfully!");
+            document.getElementById('backupFileInput').value = ""; 
+          });
         }
-      } catch (err) {
-        alert("Invalid backup file format. Please upload a valid JSON backup.");
-        document.getElementById('backupFileInput').value = ""; 
-      }
+      } catch (err) { alert("Invalid backup file."); }
     };
     reader.readAsText(file);
   }
 
   function resetApp() {
-    if(confirm("Are you sure you want to completely erase the database? This affects all connected devices.")) {
+    if(confirm("Are you sure you want to completely erase the database?")) {
       dbRef.set({ totalScore: 0, currentWeek: 1, weeks: null, history: null });
-      document.getElementById('scanMessage').innerText = "";
     }
   }
 </script>
