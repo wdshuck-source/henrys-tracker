@@ -120,6 +120,17 @@
   .comp-questions { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid #ccc; margin: 15px 0; font-size: 16px; font-weight: 600;}
   .comp-questions p { margin: 8px 0; }
   
+  /* Graphic Novel Override Checkbox */
+  .override-box {
+    background: #FFDDC1; border: 2px dashed #E67E22; border-radius: 8px; padding: 12px; margin-bottom: 15px;
+  }
+  .override-label {
+    display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: #111; cursor: pointer;
+  }
+  .override-check {
+    transform: scale(1.6); accent-color: #E67E22; margin-left: 5px; pointer-events: auto;
+  }
+
   .pin-input-large {
     font-family: 'Fredoka', sans-serif; font-size: 32px; text-align: center; width: 100%; box-sizing: border-box;
     padding: 10px; margin-bottom: 20px; border: 3px solid #111; border-radius: 8px; letter-spacing: 15px;
@@ -152,6 +163,13 @@
       <p>1️⃣ Who were the main characters and what did they want?</p>
       <p>2️⃣ What was the main conflict or challenge?</p>
       <p>3️⃣ How was the problem solved at the end?</p>
+    </div>
+
+    <div class="override-box">
+      <label class="override-label">
+        <input type="checkbox" id="graphicNovelCheck" class="override-check">
+        📖 Graphic Novel / Picture Book<br>(Halve Points)
+      </label>
     </div>
 
     <p style="text-align: center; font-size: 14px; color: #555;">Parents: If Henry gets at least 2 right, enter PIN to approve.</p>
@@ -261,7 +279,6 @@
   // =========================================================================
   const SECRET_PIN = "123456"; 
   
-  // Temporary storage for the book waiting to be approved
   let pendingBook = null;
 
   function checkStartupPin() {
@@ -279,28 +296,39 @@
     document.getElementById('pinScreen').style.display = 'none';
   }
 
-  // Handle Enter key for startup PIN
   document.getElementById('startupPinInput').addEventListener("keypress", function(event) {
     if (event.key === "Enter") { event.preventDefault(); checkStartupPin(); }
   });
 
-  // Intercepts any book entry and opens the quiz screen
   function initiateBookEntry(points, title, pages) {
     pendingBook = { points: points, title: title, pages: pages };
     document.getElementById('compBookTitle').innerText = title;
     document.getElementById('compPinInput').value = '';
     document.getElementById('compPinError').style.display = 'none';
+    
+    // Reset the Graphic Novel checkbox each time a new book is scanned
+    document.getElementById('graphicNovelCheck').checked = false;
+    
     document.getElementById('comprehensionScreen').style.display = 'flex';
   }
 
-  // Verifies PIN to approve the quiz
   function approveBook() {
     const enteredPin = document.getElementById('compPinInput').value;
     if (enteredPin === SECRET_PIN) {
       document.getElementById('comprehensionScreen').style.display = 'none';
       if (pendingBook) {
-        logEntry(pendingBook.points, pendingBook.title, pendingBook.pages, false);
-        alert(`Comprehension passed! Added "${pendingBook.title}" for ${pendingBook.points} points.`);
+        
+        let finalPoints = pendingBook.points;
+        let finalTitle = pendingBook.title;
+
+        // Apply Graphic Novel Override if checked
+        if (document.getElementById('graphicNovelCheck').checked) {
+          finalPoints = Math.ceil(finalPoints / 2); // Rounds 2.5 up to 3 for picture books
+          finalTitle = finalTitle + " [Graphic Novel]";
+        }
+
+        logEntry(finalPoints, finalTitle, pendingBook.pages, false);
+        alert(`Comprehension passed! Added "${finalTitle}" for ${finalPoints} points.`);
         pendingBook = null;
       }
     } else {
@@ -309,7 +337,6 @@
     }
   }
 
-  // Discards the book if he fails the quiz
   function cancelBook() {
     document.getElementById('comprehensionScreen').style.display = 'none';
     pendingBook = null;
@@ -401,10 +428,13 @@
       
       if(!entry.isMath) {
         totalBooks++;
-        if(entry.points === 5) picCount++;
-        else if(entry.points === 20) medCount++;
-        else if(entry.points === 50) epicCount++;
-        else if(entry.points === 100) legCount++;
+        
+        // Match points for stats, ensuring halved points fall into the correct tier buckets
+        let p = entry.points;
+        if(p === 5 || p === 3) picCount++;
+        else if(p === 20 || p === 10) medCount++;
+        else if(p === 50 || p === 25) epicCount++;
+        else if(p === 100 || p === 50) legCount++; 
       }
     });
     
@@ -416,7 +446,6 @@
     document.getElementById('statLeg').innerText = legCount;
   }
 
-  // The actual logging function (only fires if Math, or if PIN was entered)
   function logEntry(points, title, pages, isMath = false) {
     let activeWeekNum = appData.currentWeek || 1;
     let currentWeekScore = (appData.weeks && appData.weeks[activeWeekNum] && appData.weeks[activeWeekNum].score) ? appData.weeks[activeWeekNum].score : 0;
@@ -455,7 +484,6 @@
     else if (pages >= 100) pts = 50;
     else if (pages >= 50) pts = 20;
 
-    // Send to comprehension check instead of logging directly
     initiateBookEntry(pts, `Manual: ${title}`, pages);
   }
 
@@ -507,79 +535,4 @@
         let olData = await olResponse.json();
         let isbnKey = `ISBN:${decodedText}`;
         if (olData && olData[isbnKey]) {
-          title = olData[isbnKey].title || title; 
-          pages = olData[isbnKey].number_of_pages || pages;
-        }
-      }
-
-      if (title === "") {
-        document.getElementById('scanMessage').innerText = "Book not found. Please use manual entry.";
-        return;
-      }
-
-      if (pages === 0) {
-        document.getElementById('scanMessage').innerText = `Found "${title}" but missing page count.`;
-        customBookEntry(title);
-        return;
-      }
-        
-      let pts = 5;
-      if(pages >= 200) pts = 100;
-      else if(pages >= 100) pts = 50;
-      else if(pages >= 50) pts = 20;
-
-      document.getElementById('scanMessage').innerText = `Found "${title}". Initiating comprehension check...`;
-      
-      // Send to comprehension check instead of logging directly
-      initiateBookEntry(pts, `Scanned: ${title}`, pages);
-      
-    } catch(err) {
-      document.getElementById('scanMessage').innerText = "Connection error. Try manual entry.";
-    }
-  }
-
-  function onScanFailure(error) {}
-
-  // =========================================================================
-  // 7. BACKUP & RESTORE LOGIC
-  // =========================================================================
-
-  function exportBackup() {
-    const dataStr = JSON.stringify(appData, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `henrys_tracker_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function importBackup(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const parsedData = JSON.parse(e.target.result);
-        if(confirm("Are you sure you want to overwrite the live tracker with this backup file?")) {
-          dbRef.set(parsedData).then(() => {
-            alert("Backup restored successfully!");
-            document.getElementById('backupFileInput').value = ""; 
-          });
-        }
-      } catch (err) { alert("Invalid backup file."); }
-    };
-    reader.readAsText(file);
-  }
-
-  function resetApp() {
-    if(confirm("Are you sure you want to completely erase the database?")) {
-      dbRef.set({ totalScore: 0, currentWeek: 1, weeks: null, history: null });
-    }
-  }
-</script>
-</body>
-</html>
+          title = olData[isbnKey].
